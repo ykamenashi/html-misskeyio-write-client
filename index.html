@@ -9,7 +9,8 @@
     let token     = localStorage.getItem('token');
     //// https://forum.misskey.io/d/6-miauth MiAuth step ////
     const mkIoMiAuthURLCap = 'https://misskey.io/miauth/';
-    const queryParam = '?name=WriteOnly&permission=read:account,write:notes';
+    const permissions = 'read:account,write:notes,read:drive,write:drive';
+    const queryParam = '?name=WriteOnly&permission=' + permissions;
     const checkURL = 'https://misskey.io/api/miauth/' + sessId + '/check';
 
     async function prepAuth(){
@@ -51,10 +52,19 @@
     async function sendNote(){
         const noteContent = document.getElementById('note').value;
         const apiURL = 'https://misskey.io/api/notes/create';
-        const payload = {
-            i: token,
-            text: noteContent,
-        };
+        let payload;
+        if( imgAry.length == 0 ){
+            payload = {
+                i: token,
+                text: noteContent,
+            };
+        } else {
+            payload = {
+                i: token,
+                text: noteContent,
+                fileIds: imgAry,
+            };
+        }
         const resp = await fetch(apiURL, {
             method: "POST",
             headers: {
@@ -67,11 +77,49 @@
         if ( resp_raw.createdNote.createdAt != null ){
             window.alert('書き込みに成功しました:\n' + resp_raw.createdNote.createdAt);
         }
+        location.reload();
     }
 
     function resetAuth(){
         localStorage.clear();
         location.reload();
+    }
+
+    let imgAry = [];
+
+    function loadImg(elm){
+        for( let i=0,max=elm.files.length; i<max; i++){
+            uploadImage(token, elm.files[i].name, elm.files[i]);
+        }
+        console.log(imgAry);
+    }
+
+    async function uploadImage(token, fileName, fileRef){
+        const apiURL = 'https://misskey.io/api/drive/files/create'; 
+        /// drive/files/create APIはmultipart-form-data形式が必要
+        const form = new FormData();
+        form.append('i', token);
+        form.append('file', fileRef, fileName);
+        const resp = await fetch(apiURL, {
+            method: "POST",
+            /*
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+            */
+            body: form,
+        });
+        const resp_raw = (await resp.json());
+        const pict_id = resp_raw.id;
+        imgAry.push( pict_id);
+        pictLog(pict_id);
+    }
+
+    function pictLog( pict_id ){
+        const elm = document.getElementById('write_area');
+        const p = document.createElement('p');
+        p.innerText = 'アップロード完了: ' + pict_id;
+        elm.appendChild(p);
     }
 </script>
 </head>
@@ -80,6 +128,11 @@
     <div id="write_area">
         <textarea id="note" style="width: 50%;" rows="7"></textarea>
         <br/><button onclick="sendNote();">post</button>
+        <!-- <label for="pict_upload"
+            style="border: 1px solid black; padding: 4px;">
+            写真を選択 -->
+          <input type="file" accept="image/*" multiple=" multiple" onchange="loadImg(this);" id="pict_upload" style="display: inline;">
+        <!-- </label> -->
         <button onclick="resetAuth();">記憶を失う</button>
     </div>
 
