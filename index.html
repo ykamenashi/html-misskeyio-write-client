@@ -13,7 +13,7 @@
     const queryParam = '?name=WriteOnly&permission=' + permissions;
     const checkURL = 'https://misskey.io/api/miauth/' + sessId + '/check';
 
-    async function prepAuth(){
+    async function prepAuth(){ // 認証ボタンアクション
         if( sessId === null ){ // 未認証。セッション文字列を作る。
             const newId = crypto.randomUUID();
             localStorage.setItem('sessId', newId);
@@ -36,7 +36,7 @@
         return false;
     }
 
-    function updateView(){
+    function updateView(){ // 画面表示の初期化
         let indicator = document.getElementById('isAuthzed');
         if( token !== null){
             indicator.innerText = "済";
@@ -49,20 +49,20 @@
 
     }
 
-    async function sendNote(){
+    async function sendNote(){ // ノート投稿ボタンアクション
         const noteContent = document.getElementById('note').value;
         const apiURL = 'https://misskey.io/api/notes/create';
         let payload;
-        if( imgAry.length == 0 ){
+        if( imgAry.length == 0 ){ // 画像なし
             payload = {
                 i: token,
                 text: noteContent,
             };
-        } else {
+        } else { // 画像あり
             payload = {
                 i: token,
                 text: noteContent,
-                fileIds: imgAry,
+                fileIds: imgAry, // ドライブの画像IDの配列
             };
         }
         const resp = await fetch(apiURL, {
@@ -72,26 +72,24 @@
             },
             body: JSON.stringify(payload),
         });
-        const resp_raw = (await resp.json());
-        console.log(resp_raw);
+        const resp_raw = (await resp.json()); // Promiseをほどく処理
         if ( resp_raw.createdNote.createdAt != null ){
             window.alert('書き込みに成功しました:\n' + resp_raw.createdNote.createdAt);
         }
         location.reload();
     }
 
-    function resetAuth(){
+    function resetAuth(){ // localStorageを消去して再認証できるようにするアクション
         localStorage.clear();
         location.reload();
     }
 
-    let imgAry = [];
+    let imgAry = []; // ノート添付対象のドライブのファイルIDを格納する配列
 
-    function loadImg(elm){
+    function loadImg(elm){ // ファイル選択ボタン操作後のアクション
         for( let i=0,max=elm.files.length; i<max; i++){
             uploadImage(token, elm.files[i].name, elm.files[i]);
         }
-        console.log(imgAry);
     }
 
     async function uploadImage(token, fileName, fileRef){
@@ -102,20 +100,15 @@
         form.append('file', fileRef, fileName);
         const resp = await fetch(apiURL, {
             method: "POST",
-            /*
-            headers: {
-                "Content-Type": "multipart/form-data",
-            },
-            */
             body: form,
         });
         const resp_raw = (await resp.json());
         const pict_id = resp_raw.id;
-        imgAry.push( pict_id);
+        imgAry.push( pict_id ); // アップロードした画像のドライブIDを投稿用の配列に追加
         pictLog(pict_id);
     }
 
-    function pictLog( pict_id ){
+    function pictLog( pict_id ){ // アップロード進捗状況を画面に出す
         const elm = document.getElementById('write_area');
         const p = document.createElement('p');
         p.innerText = 'アップロード完了: ' + pict_id;
