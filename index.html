@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>みすきークライアント</title>
+<script language="Javascript">
+    let sessId    = localStorage.getItem('sessId');
+    let token     = localStorage.getItem('token');
+    //// https://forum.misskey.io/d/6-miauth MiAuth step ////
+    const mkIoMiAuthURLCap = 'https://misskey.io/miauth/';
+    const queryParam = '?name=WriteOnly&permission=read:account,write:notes';
+    const checkURL = 'https://misskey.io/api/miauth/' + sessId + '/check';
+
+    async function prepAuth(){
+        if( sessId === null ){ // 未認証。セッション文字列を作る。
+            const newId = crypto.randomUUID();
+            localStorage.setItem('sessId', newId);
+            sessId = newId;
+        }
+        if( token === null ){ // 未認証。MiAuthフローを開始する。
+            const checkPreRes = await fetch(checkURL, { method: "POST"});
+            // fetch()のレスポンスはPromiseに入ったJSON { "ok": false } 認証済みだとtrueになる
+            // 一度しか読み出せないのでjson()の結果を変数代入して参照
+            const bareCheckRes = (await checkPreRes.json());
+            if( bareCheckRes.ok == false ){ // 認可が必要
+                const mkIoAuthURL = mkIoMiAuthURLCap + sessId + queryParam;
+                window.open(mkIoAuthURL);
+            } else if ( bareCheckRes.ok == true ){ // 認可済み。トークンもらえる
+                token = bareCheckRes.token;
+                localStorage.setItem('token', token);
+                location.reload();
+            }
+        }
+        return false;
+    }
+
+    function updateView(){
+        let indicator = document.getElementById('isAuthzed');
+        if( token !== null){
+            indicator.innerText = "済";
+            document.getElementById("write_area").style.display = 'block';
+            document.getElementById("auth_area").style.display = 'none';
+        } else {
+            document.getElementById("write_area").style.display = 'none';
+            document.getElementById("auth_area").style.display = 'block';
+        }
+
+    }
+
+    async function sendNote(){
+        const noteContent = document.getElementById('note').value;
+        const apiURL = 'https://misskey.io/api/notes/create';
+        const payload = {
+            i: token,
+            text: noteContent,
+        };
+        const resp = await fetch(apiURL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+        });
+        const resp_raw = (await resp.json());
+        console.log(resp_raw);
+        if ( resp_raw.createdNote.createdAt != null ){
+            window.alert('書き込みに成功しました:\n' + resp_raw.createdNote.createdAt);
+        }
+    }
+
+    function resetAuth(){
+        localStorage.clear();
+        location.reload();
+    }
+</script>
+</head>
+<body onload="updateView();">
+    <p>みすきークライアント</p>
+    <div id="write_area">
+        <textarea id="note" style="width: 50%;" rows="7"></textarea>
+        <br/><button onclick="sendNote();">post</button>
+        <button onclick="resetAuth();">記憶を失う</button>
+    </div>
+
+    認証: <span id="isAuthzed">未</span>
+
+    <div id="auth_area">
+        <br/><button id="start-auth" onClick="prepAuth();">認証開始</button>
+        <p>認可後にリロードし、再度ボタン押してください。</p>
+    </div>
+</body>
+</html>
