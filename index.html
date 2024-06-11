@@ -120,9 +120,12 @@
     <p>みすきークライアント</p>
     <div id="write_area">
         <textarea id="note" style="width: 50%;" rows="7"></textarea>
-        <br/><button onclick="sendNote();">post</button>
+        <br/>
           <input type="file" accept="image/*" multiple=" multiple" onchange="loadImg(this);" id="pict_upload" style="display: inline;">
-        <button onclick="resetAuth();">記憶を失う</button>
+        <button onclick="sendNote();">投稿する！</button>
+        <div id="reset" style="margin-top: 60px;">
+            <button onclick="resetAuth();">記憶を失う</button>
+        </div>
     </div>
 
     認証: <span id="isAuthzed">未</span>
