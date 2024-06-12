@@ -59,10 +59,14 @@
                 text: noteContent,
             };
         } else { // 画像あり
+            let sortedImgAry = imgAry.sort(function(a,b){ // アップロードが非同期なので順番が入れ替わる対策
+                return (a.index < b.index) ? -1 : 1; // .indexによる昇順ソート
+            });
+            const fileIdAry = sortedImgAry.map((e) => e.id);
             payload = {
                 i: token,
                 text: noteContent,
-                fileIds: imgAry, // ドライブの画像IDの配列
+                fileIds: fileIdAry, // ドライブの画像IDの配列
             };
         }
         const resp = await fetch(apiURL, {
@@ -84,15 +88,15 @@
         location.reload();
     }
 
-    let imgAry = []; // ノート添付対象のドライブのファイルIDを格納する配列
+    let imgAry = []; // ノート添付対象のドライブのファイルIDを格納する配列 { id: file_id index: num }
 
     function loadImg(elm){ // ファイル選択ボタン操作後のアクション
         for( let i=0,max=elm.files.length; i<max; i++){
-            uploadImage(token, elm.files[i].name, elm.files[i]);
+            uploadImage(token, elm.files[i].name, elm.files[i], i);
         }
     }
 
-    async function uploadImage(token, fileName, fileRef){
+    async function uploadImage(token, fileName, fileRef, index){
         const apiURL = 'https://misskey.io/api/drive/files/create'; 
         /// drive/files/create APIはmultipart-form-data形式が必要
         const form = new FormData();
@@ -104,7 +108,7 @@
         });
         const resp_raw = (await resp.json());
         const pict_id = resp_raw.id;
-        imgAry.push( pict_id ); // アップロードした画像のドライブIDを投稿用の配列に追加
+        imgAry.push( { id: pict_id, index: index } ); // アップロードした画像のドライブIDを投稿用の配列に追加
         pictLog(pict_id);
     }
 
